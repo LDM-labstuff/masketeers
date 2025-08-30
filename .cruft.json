@@ -1,0 +1,18 @@
+{
+  "template": "https://github.com/ai-mbl/example-project",
+  "commit": "7fb9288f1e460b9b319a76d7348ed7a100ce75cb",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "4 Masketeers",
+      "email": "diazmartinez@gonzaga.edu",
+      "project_name": "Masketeers",
+      "project_slug": "masketeers",
+      "project_short_description": "2D segmentation and classification",
+      "default_python": "3.11",
+      "_template": "https://github.com/ai-mbl/example-project",
+      "_commit": "7fb9288f1e460b9b319a76d7348ed7a100ce75cb"
+    }
+  },
+  "directory": null
+}
