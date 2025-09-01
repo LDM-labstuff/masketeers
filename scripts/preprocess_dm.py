@@ -3,6 +3,44 @@ import numpy as np
 import imageio
 import os
 
+# Helper Functions for Data Preprocessing
+def crop_tiles(image, crop_size):
+    #Function for convertion of large images into series of tiles stacked along the 0 axis
+    h, w = image.shape
+    h_tiles = (h + crop_size - 1) // crop_size  # ceil division
+    v_tiles = (w + crop_size - 1) // crop_size
+
+    # Padding
+    pad_h = h_tiles * crop_size - h
+    pad_w = v_tiles * crop_size - w
+    if pad_h > 0 or pad_w > 0:
+        image = np.pad(image, ((0, pad_h), (0, pad_w)), mode='constant')
+
+    # Preallocate output array
+    tiles = np.empty((h_tiles * v_tiles, crop_size, crop_size), dtype=image.dtype)
+
+    idx = 0
+    for i in range(h_tiles):
+        for j in range(v_tiles):
+            y_start = i * crop_size
+            x_start = j * crop_size
+            tiles[idx] = image[y_start:y_start + crop_size, x_start:x_start + crop_size]
+            idx += 1
+
+    return tiles
+
+def relabel_and_compress (segmentation, start_index = 1):
+    # This function sequentially relabelles instances of segmented objects and
+    # compresses all class segmentation channels to 1
+    for i in range (segmentation.shape[0]):
+        if segmentation [i, :, :].max() > 0:
+            segmentation [i, :, :] = relabel_sequential (segmentation [i, :, :], offset = start_index)[0]
+            start_index = segmentation [i, :, :].max()
+        else:
+            segmentation [i, :, :] = segmentation [i, :, :]
+    segmentation = segmentation.sum (axis = 0)
+    return segmentation
+
 #Getting List of Image File Names
 path = "/mnt/efs/aimbl_2025/student_data/S-DM/Data/raw_1_channel_images/"
 tiff_files = sorted([os.path.join(path, f) for f in os.listdir(path) if f.endswith('.tiff') or f.endswith('.tif')])
@@ -53,6 +91,20 @@ for condition, file_list in condition_files.items():
             print (channel_path)
             if os.path.exists (channel_path):
                 group_fov["y"][i, :, :] = imageio.imread (channel_path)
+
+# Creating additional arrays with cropped images and compressed segmentation channels
+for conditions in list (root.keys()):
+    images = root [conditions].keys()
+    for fov in images:
+        fov_group = root [conditions][fov]
+        x = root[conditions][fov] ["x"][:]
+        y = root[conditions][fov]["y"][:].astype ("int64")
+
+        y_compressed = relabel_and_compress (y)
+        x_cropped = crop_tiles (x, crop_size = 512)
+        y_cropped = crop_tiles (y_compressed, crop_size = 512)
+        fov_group.create_array (name = "x_cropped", data = x_cropped)
+        fov_group.create_array (name = "y_cropped", data = y_cropped)
 
 
 
