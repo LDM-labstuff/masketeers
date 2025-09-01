@@ -23,5 +23,6 @@ dependencies = [
     "zarr",
     "matplotlib",
     "imageio",
+    "ome-zarr",
     "napari[all]",
 ]
