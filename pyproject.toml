@@ -24,6 +24,6 @@ dependencies = [
     "matplotlib",
     "imageio",
     "ome-zarr",
-    "local
+    
     
 ]
