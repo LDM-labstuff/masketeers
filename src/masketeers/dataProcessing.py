@@ -44,6 +44,8 @@ def relabel_and_compress (segmentation, start_index = 1):
     return segmentation
 
 def load_data (zarr_path):
+    # This function takes individual stacks of cropped images and concatelates them into 
+    # single image stack
     x_arrays = []
     y_arrays = []
     root = zarr.open (zarr_path)
