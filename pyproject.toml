@@ -24,6 +24,8 @@ dependencies = [
     "matplotlib",
     "imageio",
     "ome-zarr",
+    "dlmbl_unet@git+https://github.com/dlmbl/dlmbl-unet",
+
     
     
 ]
