@@ -41,6 +41,13 @@ def relabel_and_compress (segmentation, start_index = 1):
     segmentation = segmentation.sum (axis = 0)
     return segmentation
 
+def min_max_normalize (image):
+    image = np.array (image)
+    min = image.min()
+    max = image.max()
+    image = (image - min)/(max - min)
+    return image
+
 #Getting List of Image File Names
 path = "/mnt/efs/aimbl_2025/student_data/S-DM/Data/raw_1_channel_images/"
 tiff_files = sorted([os.path.join(path, f) for f in os.listdir(path) if f.endswith('.tiff') or f.endswith('.tif')])
@@ -53,7 +60,7 @@ for condition in conditions:
     condition_files[condition] = [f for f in tiff_files if condition in f]
 
 # Getting files for segmentation channels
-segmentation_path = "/mnt/efs/aimbl_2025/student_data/S-DM/Data/classes/"
+segmentation_path = "/mnt/efs/aimbl_2025/student_data/S-DM/Data/classes_2/"
 seg_folders = sorted(os.listdir (segmentation_path))
 n_channels = len (seg_folders)
 
@@ -98,10 +105,11 @@ for conditions in list (root.keys()):
     for fov in images:
         fov_group = root [conditions][fov]
         x = root[conditions][fov] ["x"][:]
-        y = root[conditions][fov]["y"][:].astype ("int64")
+        y = root[conditions][fov]["y"][:].astype ("int16")
 
         y_compressed = relabel_and_compress (y)
-        x_cropped = crop_tiles (x, crop_size = 512)
+        x_normalized = min_max_normalize (x)
+        x_cropped = crop_tiles (x_normalized, crop_size = 512)
         y_cropped = crop_tiles (y_compressed, crop_size = 512)
         fov_group.create_array (name = "x_cropped", data = x_cropped)
         fov_group.create_array (name = "y_cropped", data = y_cropped)
