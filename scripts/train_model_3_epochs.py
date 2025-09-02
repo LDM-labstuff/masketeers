@@ -235,7 +235,8 @@ class CropDataset(Dataset):
     
 
         return torch.tensor(img, dtype=torch.float32), torch.tensor(sdt, dtype=torch.float32)
-    
+
+print ("Uploadind data to a dataset")    
 dataset = CropDataset (zarr_path=zarr_path)
 print ("Dataset has been generated")
 
