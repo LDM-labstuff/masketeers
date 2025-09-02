@@ -15,7 +15,7 @@ import torchvision.transforms.v2 as transforms_v2
 from torch.utils.tensorboard import SummaryWriter
 import subprocess
 
-zarr_path = "/mnt/efs/aimbl_2025/student_data/S-DM/Data/zarr_storage/test.zarr"
+zarr_path = "/mnt/efs/aimbl_2025/student_data/S-DM/Data/zarr_storage/tauopathies.zarr"
 root = zarr.open (zarr_path)
 
 def load_data (zarr_path):
