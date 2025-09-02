@@ -2,6 +2,8 @@ import zarr
 import numpy as np
 import imageio
 import os
+import random
+from skimage.segmentation import relabel_sequential
 
 # Helper Functions for Data Preprocessing
 def crop_tiles(image, crop_size):
@@ -63,12 +65,15 @@ for condition in conditions:
 segmentation_path = "/mnt/efs/aimbl_2025/student_data/S-DM/Data/classes_2/"
 seg_folders = sorted(os.listdir (segmentation_path))
 n_channels = len (seg_folders)
+print (f"Data contains {n_channels} segmentation classes"))
 
 # Creating .zarr object
 
 #Initiating zarr
 zarr_path = "/mnt/efs/aimbl_2025/student_data/S-DM/Data/zarr_storage/"
 test_zarr = zarr_path +"tauopathies.zarr"
+
+print (f"Creating zarr file at {test_zarr}")
 
 root = zarr.open(test_zarr, mode='w')
 for condition, file_list in condition_files.items():
@@ -113,6 +118,7 @@ for conditions in list (root.keys()):
         y_cropped = crop_tiles (y_compressed, crop_size = 512)
         fov_group.create_array (name = "x_cropped", data = x_cropped)
         fov_group.create_array (name = "y_cropped", data = y_cropped)
+print ("zarr generation complete")
 
 
 
