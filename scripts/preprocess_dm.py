@@ -65,7 +65,7 @@ for condition in conditions:
 segmentation_path = "/mnt/efs/aimbl_2025/student_data/S-DM/Data/classes_2/"
 seg_folders = sorted(os.listdir (segmentation_path))
 n_channels = len (seg_folders)
-print (f"Data contains {n_channels} segmentation classes"))
+print (f"Data contains {n_channels} segmentation classes")
 
 # Creating .zarr object
 
