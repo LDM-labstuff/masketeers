@@ -41,7 +41,15 @@ def relabel_and_compress (segmentation, start_index = 1):
         else:
             segmentation [i, :, :] = segmentation [i, :, :]
     segmentation = segmentation.sum (axis = 0)
+
     return segmentation
+
+def min_max_normalize (image):
+    image = np.array (image)
+    min = image.min()
+    max = image.max()
+    image = (image - min)/(max - min)
+    return image
 
 def load_data (zarr_path):
     # This function takes individual stacks of cropped images and concatelates them into 
@@ -52,7 +60,7 @@ def load_data (zarr_path):
     for conditions in list (root.keys()):
         images = root [conditions].keys()
         for fov in images:
-            x = root[conditions][fov]["x_cropped"][:]
+            x = root[conditions][fov]["x_cropped"][:].astype ("float32")
             y = root[conditions][fov]["y_cropped"][:].astype ("int16")
             #y1 = root[conditions][fov]["y_cropped"][:].astype ("int64")
             #assert (y == y1).all()
