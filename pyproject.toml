@@ -25,7 +25,7 @@ dependencies = [
     "imageio",
     "ome-zarr",
     "dlmbl_unet@git+https://github.com/dlmbl/dlmbl-unet",
-    "napari[all]"
+    "napari[all]",
 
     
     
