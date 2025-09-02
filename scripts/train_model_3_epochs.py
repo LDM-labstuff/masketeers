@@ -25,7 +25,7 @@ def load_data (zarr_path):
     for conditions in list (root.keys()):
         images = root [conditions].keys()
         for fov in images:
-            x = root[conditions][fov]["x_cropped"][:]
+            x = root[conditions][fov]["x_cropped"][:].astype ("float32")
             y = root[conditions][fov]["y_cropped"][:].astype ("int16")
             #y1 = root[conditions][fov]["y_cropped"][:].astype ("int64")
             #assert (y == y1).all()
@@ -241,10 +241,10 @@ dataset = CropDataset (zarr_path=zarr_path)
 print ("Dataset has been generated")
 
 torch.manual_seed (41)
-np.random.seed(42)
-training, validation = random_split(dataset, lengths = (0.2, 0.8))
+
+training, validation = random_split(dataset, lengths = (0.1, 0.9))
 print (f"Training dataset contains {len (training)} images")
-train_dataloader = DataLoader (training, shuffle=True, batch_size=128)
+train_dataloader = DataLoader (training, shuffle=True, batch_size=1)
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 model = UNet(
@@ -293,4 +293,4 @@ for epoch in range(3):
             "epoch": epoch,
                 # "losses": losses,
                 },
-                f"/mnt/efs/aimbl_2025/student_data/S-DM/Data/chackpoints/unet_{epoch}.pth",)
+                f"/mnt/efs/aimbl_2025/student_data/S-DM/Data/checkpoints/unet_{epoch}.pth",)
