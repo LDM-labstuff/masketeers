@@ -23,5 +23,7 @@ dependencies = [
     "zarr",
     "matplotlib",
     "imageio",
+    "tqdm",
+    "napari"
     
 ]
