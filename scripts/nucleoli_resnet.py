@@ -2,7 +2,8 @@
 Nucleoli classifier model based on ResNet18
 
 To run in remote:
-tmux att
+in the terminal use 'tmux attach' to create a new remote session, then input the script ('python scripts/nucleoli_resnet.py)
+then dettach from tmux by using ctrl b followed by d
 After training, to load weights to run predictions use:
 
 weights = torch.load("/mnt/efs/aimbl_2025/student_data/S-DD/nucleoli_restnet_trained.pth")
@@ -10,6 +11,7 @@ model.load_state_dict(weights["nucleoli_resnet"])
 """
 
 #Imports
+import datetime
 import zarr
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -25,26 +27,25 @@ import tqdm
 
 #Load images from zarr to torch dataset
 
+TREATMENTS = ['8nMActD', 'DMSO', '1uMdoxo', 'CX5461', '5uMflavo', '800nMActD', '10uMmg132', '10uMwort']
+
 class ZarrImageDataset(Dataset):
     def __init__(self, zarr_path, transform=None):
         self.root = zarr.open(zarr_path, mode='r')
         self.transform = transform
         self.images = []
         self.labels = []
-        self.label_map = {name: idx for idx, name in enumerate(self.root.group_keys())}
+        self.label_map = {name: idx for idx, name in enumerate(TREATMENTS)}
 
         # Load images and labels
         # map treatments to integer labels
         for treatment_name in self.root.group_keys():
             treatment_group = self.root[treatment_name]['cimages_max']
             print(f"the treatment group shape for treatment {treatment_name} is {treatment_group.shape}")
-            for i in range(treatment_group.shape[0]):
-                img = treatment_group[i]
-                self.images.append(img)
-                self.labels.append(self.label_map[treatment_name])
-        # self.labels = np.array(self.labels).reshape(-1, 1)
-        # enc = OneHotEncoder(categories=[['8nMActD', 'DMSO', '1uMdoxo', 'CX5461', '5uMflavo', '800nMActD', '10uMmg132', '10uMwort']]).fit(self.labels)
-        # self.labels = enc.transform(self.labels).toarray()
+            self.images.append(treatment_group[:])
+            self.labels.extend([self.label_map[treatment_name]] * treatment_group.shape[0])
+
+        self.images = np.concatenate(self.images)
 
     def __len__(self):
         return len(self.images)
@@ -99,13 +100,29 @@ def train_nucleoli_resnet(model, train_loader, batch_size, criterion, optimizer)
         pbar.update(1)
     return history
 
+
+def validate_nucleoli_resnet(model, eval_loader, batch_size):
+    model.eval()
+    pbar = tqdm.tqdm(total=len(eval_dataset) // batch_size)
+    predictions = []
+    targets = []
+    for batch_idx, (raw, target) in enumerate(eval_loader):
+        raw = raw.to(device)
+        output = model(raw)
+        # loss = criterion(output, target)
+        # history.append(loss.item())
+        predictions.append(output.argmax().cpu().detach().numpy())
+        targets.append(target)
+        pbar.update(1)
+    return predictions, targets
+
 # Create the dataset
 zarr_path = '/mnt/efs/aimbl_2025/student_data/S-DD/LDM_treatments.zarr'
 dataset = ZarrImageDataset(zarr_path)
 
 
 #Provide model parameters
-num_epochs = 2
+num_epochs = 150
 learning_rate = 0.001
 batch_size = 32
 num_classes = 8
@@ -116,8 +133,8 @@ train_dataset, eval_dataset, test_dataset = split_dataset(dataset)
 
 # Data loader
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-eval_loader = DataLoader(eval_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
-test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+eval_loader = DataLoader(eval_dataset, batch_size=1, shuffle=False, num_workers=4)
+test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=4)
 
 
 # Load pretrained ResNet-18 model
@@ -134,13 +151,25 @@ optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
 # Training loop:
 loss_history = []
 for epoch in range(num_epochs):
+    print(f"Now training epoch {epoch}")
     his = train_nucleoli_resnet(model, train_loader, batch_size, criterion, optimizer)
     loss_history.extend(his)
 
+
+tstamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
 fig, ax = plt.subplots()
 ax.plot(loss_history)
-fig.savefig('/mnt/efs/aimbl_2025/student_data/S-DD/nucleoli_restnet_trained_loss_plot.png')
+fig.savefig(f'/mnt/efs/aimbl_2025/student_data/S-DD/nucleoli_restnet_trained_loss_plot-{tstamp}.png')
 
 # Save the model
 torch.save(
-        {"nucleoli_resnet": model.state_dict()}, '/mnt/efs/aimbl_2025/student_data/S-DD/nucleoli_restnet_trained.pth')
+        {"nucleoli_resnet": model.state_dict()}, f'/mnt/efs/aimbl_2025/student_data/S-DD/nucleoli_restnet_trained-{tstamp}.pth')
+
+batch_size = 1
+predictions, targets = validate_nucleoli_resnet(model, eval_loader, batch_size)
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+cm = confusion_matrix(targets, predictions)
+disp = ConfusionMatrixDisplay(cm, display_labels=TREATMENTS)
+disp.figure_.savefig(f'nucleoli_restnet_validation_cm-{tstamp}.png')
