@@ -131,13 +131,8 @@ def train(
     model = model.to(device)
 
     # iterate over the batches of this epoch
-    for batch_id, (x, y, *w) in enumerate(loader):
-        # move input and target to the active device (either cpu or gpu)
-        if len(w) > 0:
-            w = w[0]
-            w = w.to(device)
-        else:
-            w = None
+    for batch_id, (x, y, z) in enumerate(loader):
+ 
         x, y = x.to(device), y.to(device)
 
         # zero the gradients for this iteration
@@ -149,9 +144,6 @@ def train(
         if y.dtype != prediction.dtype:
             y = y.type(prediction.dtype)
         loss = loss_function(prediction, y)
-        if w is not None:
-            weighted_loss = loss * w
-            loss = torch.mean(weighted_loss)
 
         # backpropagate the loss and adjust the parameters
         loss.backward()
@@ -353,7 +345,7 @@ class CropDataset(Dataset):
 
     
 
-        return torch.tensor(img, dtype=torch.float32), torch.tensor(sdt, dtype=torch.float32)
+        return torch.tensor(img, dtype=torch.float32), torch.tensor(sdt, dtype=torch.float32), seg
     
 class DiceCoefficient(nn.Module):
     def __init__(self, eps=1e-6):
