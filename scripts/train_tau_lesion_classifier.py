@@ -181,8 +181,7 @@ print ("File upload completed")
 lesion_classifier = models.resnet18(weights = None)
 lesion_classifier.conv1 = torch.nn.Conv2d(1, 64, kernel_size=3)
 lesion_classifier.fc = nn.Sequential(
-    nn.Linear(in_features=512, out_features=2),
-    nn.Sigmoid()  
+    nn.Linear(in_features=512, out_features=2)
 )
 
 torch.manual_seed (41)
@@ -190,15 +189,15 @@ torch.manual_seed (41)
 training, validation = random_split(dataset, lengths = (0.8, 0.2))
 print (len(training))
 learning_rate = 1e-4
-loss = nn.BCELoss()
+loss = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam (lesion_classifier.parameters(), lr = learning_rate)
 train_dataloader = DataLoader (training, shuffle=True, batch_size=16)
 val_dataloader = DataLoader (validation)
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-logger = SummaryWriter("runs/classifier_test_BCE_loss")
+logger = SummaryWriter("runs/classifier_test_CE_loss")
 
-launch_tensorboard("runs/classifier_test_BCE_loss")
+launch_tensorboard("runs/classifier_test_CE_loss")
 
 print ("Starting model training")
 for epoch in range(10000):
@@ -214,5 +213,5 @@ for epoch in range(10000):
             "epoch": epoch,
                 # "losses": losses,
                 },
-                f"/mnt/efs/aimbl_2025/student_data/S-DM/Data/checkpoints_classifier_BCE/resnet_{epoch}.pth",)
+                f"/mnt/efs/aimbl_2025/student_data/S-DM/Data/checkpoints_classifier_CE/resnet_{epoch}.pth",)
 print ("Training completed!")
