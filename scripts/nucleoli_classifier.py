@@ -8,6 +8,7 @@ import numpy as np
 import datetime
 from sklearn.datasets import fetch_openml
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import check_random_state
@@ -118,7 +119,7 @@ def main(
     cm = confusion_matrix(y_val, y_pred)
     disp = ConfusionMatrixDisplay(cm, display_labels=TREATMENTS)
     disp.plot(xticks_rotation = 45)
-    disp.figure_.savefig(f'/mnt/efs/aimbl_2025/student_data/S-DD/nucleoli_classifier_validation_cm-{tstamp}.png')
+    disp.figure_.savefig(f'/mnt/efs/aimbl_2025/student_data/S-DD/nucleoli_classifier_validation_cm_{'-'.join(dataset_list)}-{tstamp}.png')
 
 if __name__ == "__main__":
     typer.run(main)
