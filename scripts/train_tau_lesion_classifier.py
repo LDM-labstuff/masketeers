@@ -179,7 +179,7 @@ dataset = ClassificationDataset (zarr_path=zarr_path)
 print ("File upload completed")
 
 lesion_classifier = models.resnet18(weights = None)
-lesion_classifier.conv1 = torch.nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+lesion_classifier.conv1 = torch.nn.Conv2d(1, 64, kernel_size=3)
 lesion_classifier.fc = nn.Sequential(
     nn.Linear(in_features=512, out_features=2),
     nn.Sigmoid()  
@@ -191,7 +191,7 @@ training, validation = random_split(dataset, lengths = (0.8, 0.2))
 print (len(training))
 learning_rate = 1e-4
 loss = nn.BCELoss()
-optimizer = torch.optim.Adam (classifier.parameters(), lr = learning_rate)
+optimizer = torch.optim.Adam (lesion_classifier.parameters(), lr = learning_rate)
 train_dataloader = DataLoader (training, shuffle=True, batch_size=16)
 val_dataloader = DataLoader (validation)
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
