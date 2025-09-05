@@ -23,6 +23,7 @@ import torch.optim as optim
 from torch.utils.data import random_split
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import tqdm
 
 #Load images from zarr to torch dataset
@@ -168,8 +169,9 @@ torch.save(
 
 batch_size = 1
 predictions, targets = validate_nucleoli_resnet(model, eval_loader, batch_size)
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
 
 cm = confusion_matrix(targets, predictions)
 disp = ConfusionMatrixDisplay(cm, display_labels=TREATMENTS)
+disp.plot(xticks_rotation = 45)
 disp.figure_.savefig(f'nucleoli_restnet_validation_cm-{tstamp}.png')
