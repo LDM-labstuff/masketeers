@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Data Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 300px;
+            height: fit-content;
+        }
+        
+        .visualization {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex: 1;
+        }
+        
+        .image-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 300px;
+            min-height: 400px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        input[type="range"] {
+            width: 70%;
+            margin-right: 10px;
+        }
+        
+        #pointSizeValue {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        .scatter-plot {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .dot {
+            stroke: #000;
+            stroke-width: 0.5;
+            cursor: pointer;
+        }
+        
+        .dot:hover {
+            stroke-width: 2;
+            r: 6;
+        }
+        
+        .axis {
+            font-size: 12px;
+        }
+        
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .error {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        #selectedImage {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+        
+        #imageInfo {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Data Visualization</h1>
+    
+    <div class="container">
+        <div class="controls">
+            <h3>Plot Controls</h3>
+            
+            <div class="control-group">
+                <label for="xFeature">X-axis Feature:</label>
+                <select id="xFeature">
+                    <option value="">Select X feature...</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="yFeature">Y-axis Feature:</label>
+                <select id="yFeature">
+                    <option value="">Select Y feature...</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="colorFeature">Color by (optional):</label>
+                <select id="colorFeature">
+                    <option value="">No coloring</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="pointSize">Point Size:</label>
+                <input type="range" id="pointSize" min="1" max="10" value="4" step="0.5">
+                <span id="pointSizeValue">4</span>
+            </div>
+            
+            <button onclick="updatePlot()">Update Plot</button>
+            <button onclick="resetZoom()" style="background-color: #6c757d; margin-top: 5px;">Reset Zoom</button>
+            
+            <div id="status" class="loading" style="display: none;">Loading...</div>
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+        
+        <div class="visualization">
+            <h3>Scatter Plot</h3>
+            <svg id="scatterPlot" width="750" height="650" class="scatter-plot"></svg>
+        </div>
+        
+        <div class="image-panel">
+            <h3>Selected Point</h3>
+            <div id="imageContainer">
+                <p class="loading">Click on a point in the scatter plot to view its image</p>
+            </div>
+            <img id="selectedImage" style="display: none;">
+            <div id="imageInfo" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentData = [];
+        let colorScale = null;
+        let svg, g, xScale, yScale, zoom;
+        let currentPointSize = 4;
+        let selectedCategory = null; // Track selected legend category
+        
+        // Load features on page load
+        window.onload = function() {
+            loadFeatures();
+            setupPointSizeControl();
+        };
+        
+        function setupPointSizeControl() {
+            const pointSizeSlider = document.getElementById('pointSize');
+            const pointSizeValue = document.getElementById('pointSizeValue');
+            
+            pointSizeSlider.addEventListener('input', function() {
+                currentPointSize = parseFloat(this.value);
+                pointSizeValue.textContent = currentPointSize;
+                updatePointSizes();
+            });
+        }
+        
+        function updatePointSizes() {
+            if (g) {
+                g.selectAll('.dot')
+                    .attr('r', currentPointSize);
+            }
+        }
+        
+        function resetZoom() {
+            if (svg && zoom) {
+                svg.transition().duration(750).call(
+                    zoom.transform,
+                    d3.zoomIdentity
+                );
+            }
+        }
+        
+        function updatePointColors() {
+            if (!g) return;
+            
+            g.selectAll('.dot')
+                .transition()
+                .duration(300)
+                .attr('fill', d => {
+                    if (!colorScale || !selectedCategory) {
+                        // No filtering - show normal colors
+                        return colorScale ? colorScale(d.color) : '#1f77b4';
+                    } else if (d.color === selectedCategory) {
+                        // Highlighted category - show normal color
+                        return colorScale(d.color);
+                    } else {
+                        // Other categories - show gray
+                        return '#d3d3d3';
+                    }
+                })
+                .attr('opacity', d => {
+                    if (!selectedCategory || d.color === selectedCategory) {
+                        return 1.0;
+                    } else {
+                        return 0.1;
+                    }
+                });
+            
+            // Update histogram colors as well
+            updateHistogramColors();
+        }
+        
+        function updateHistogramColors() {
+            if (!g || !colorScale) return;
+            
+            // Update X histogram colors
+            g.select('.x-histogram')
+                .selectAll('rect')
+                .transition()
+                .duration(300)
+                .attr('fill', function() {
+                    const originalColor = d3.select(this).attr('data-original-color');
+                    if (!selectedCategory || !originalColor) {
+                        return originalColor || d3.select(this).attr('fill'); // Keep original color
+                    }
+                    
+                    // Check if this rect belongs to the selected category
+                    const belongsToSelected = selectedCategory && colorScale(selectedCategory) === originalColor;
+                    
+                    return belongsToSelected ? originalColor : '#d3d3d3';
+                })
+                .attr('opacity', function() {
+                    const originalColor = d3.select(this).attr('data-original-color');
+                    if (!selectedCategory || !originalColor) {
+                        return 0.7; // Original opacity
+                    }
+                    
+                    const belongsToSelected = selectedCategory && colorScale(selectedCategory) === originalColor;
+                    
+                    return belongsToSelected ? 0.7 : 0.2;
+                });
+            
+            // Update Y histogram colors
+            g.select('.y-histogram')
+                .selectAll('rect')
+                .transition()
+                .duration(300)
+                .attr('fill', function() {
+                    const originalColor = d3.select(this).attr('data-original-color');
+                    if (!selectedCategory || !originalColor) {
+                        return originalColor || d3.select(this).attr('fill'); // Keep original color
+                    }
+                    
+                    // Check if this rect belongs to the selected category
+                    const belongsToSelected = selectedCategory && colorScale(selectedCategory) === originalColor;
+                    
+                    return belongsToSelected ? originalColor : '#d3d3d3';
+                })
+                .attr('opacity', function() {
+                    const originalColor = d3.select(this).attr('data-original-color');
+                    if (!selectedCategory || !originalColor) {
+                        return 0.7; // Original opacity
+                    }
+                    
+                    const belongsToSelected = selectedCategory && colorScale(selectedCategory) === originalColor;
+                    
+                    return belongsToSelected ? 0.7 : 0.2;
+                });
+        }
+        
+        function loadFeatures() {
+            fetch('/api/features')
+                .then(response => response.json())
+                .then(data => {
+                    populateDropdowns(data.features, data.categorical_features);
+                })
+                .catch(error => {
+                    showError('Failed to load features: ' + error.message);
+                });
+        }
+        
+        function populateDropdowns(features, categoricalFeatures) {
+            const xSelect = document.getElementById('xFeature');
+            const ySelect = document.getElementById('yFeature');
+            const colorSelect = document.getElementById('colorFeature');
+            
+            // Clear existing options
+            xSelect.innerHTML = '<option value="">Select X feature...</option>';
+            ySelect.innerHTML = '<option value="">Select Y feature...</option>';
+            colorSelect.innerHTML = '<option value="">No coloring</option>';
+            
+            // Add feature options
+            features.forEach(feature => {
+                xSelect.innerHTML += `<option value="${feature}">${feature}</option>`;
+                ySelect.innerHTML += `<option value="${feature}">${feature}</option>`;
+            });
+            
+            // Add categorical features for coloring
+            categoricalFeatures.forEach(feature => {
+                colorSelect.innerHTML += `<option value="${feature}">${feature}</option>`;
+            });
+        }
+        
+        function updatePlot() {
+            const xFeature = document.getElementById('xFeature').value;
+            const yFeature = document.getElementById('yFeature').value;
+            const colorFeature = document.getElementById('colorFeature').value;
+            
+            if (!xFeature || !yFeature) {
+                showError('Please select both X and Y features');
+                return;
+            }
+            
+            showStatus('Loading data...');
+            hideError();
+            
+            let url = `/api/scatter_data?x_feature=${xFeature}&y_feature=${yFeature}`;
+            if (colorFeature) {
+                url += `&color_feature=${colorFeature}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    currentData = data.data;
+                    drawScatterPlot(currentData, xFeature, yFeature, colorFeature);
+                    hideStatus();
+                })
+                .catch(error => {
+                    showError('Failed to load data: ' + error.message);
+                    hideStatus();
+                });
+        }
+        
+        function drawScatterPlot(data, xFeature, yFeature, colorFeature) {
+            svg = d3.select('#scatterPlot');
+            svg.selectAll('*').remove(); // Clear previous plot
+            
+            // Reset selection when creating new plot
+            selectedCategory = null;
+            
+            const margin = {top: 100, right: 150, bottom: 100, left: 80};
+            const width = 750 - margin.left - margin.right;
+            const height = 650 - margin.top - margin.bottom;
+            const scatterWidth = width - 50; // Leave space for y-histogram
+            const scatterHeight = height - 50; // Leave space for x-histogram
+            const histogramSize = 80; // Size of histogram bars
+            
+            // Create main group
+            g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+            
+            // Scales for scatter plot
+            xScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.x))
+                .range([0, scatterWidth]);
+            
+            yScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.y))
+                .range([scatterHeight, 0]);
+            
+            // Color scale
+            if (colorFeature) {
+                const colorValues = [...new Set(data.map(d => d.color))];
+                colorScale = d3.scaleOrdinal()
+                    .domain(colorValues)
+                    .range(d3.schemeCategory10);
+            } else {
+                colorScale = null;
+            }
+            
+            // Create histograms
+            const bins = 20;
+            
+            // X histogram data
+            const xHistogramData = d3.histogram()
+                .domain(xScale.domain())
+                .thresholds(bins)
+                .value(d => d.x)(data);
+            
+            // Y histogram data
+            const yHistogramData = d3.histogram()
+                .domain(yScale.domain())
+                .thresholds(bins)
+                .value(d => d.y)(data);
+            
+            // Process histogram data to include color information
+            if (colorFeature) {
+                xHistogramData.forEach(bin => {
+                    const colorCounts = {};
+                    bin.forEach(d => {
+                        const color = d.color;
+                        colorCounts[color] = (colorCounts[color] || 0) + 1;
+                    });
+                    bin.colorCounts = colorCounts;
+                });
+                
+                yHistogramData.forEach(bin => {
+                    const colorCounts = {};
+                    bin.forEach(d => {
+                        const color = d.color;
+                        colorCounts[color] = (colorCounts[color] || 0) + 1;
+                    });
+                    bin.colorCounts = colorCounts;
+                });
+            }
+            
+            // Scales for histograms
+            const xHistScale = d3.scaleLinear()
+                .domain([0, d3.max(xHistogramData, d => d.length)])
+                .range([0, histogramSize]);
+            
+            const yHistScale = d3.scaleLinear()
+                .domain([0, d3.max(yHistogramData, d => d.length)])
+                .range([0, histogramSize]);
+            
+            // Create clip path for zooming
+            svg.append("defs").append("clipPath")
+                .attr("id", "clip")
+                .append("rect")
+                .attr("width", scatterWidth)
+                .attr("height", scatterHeight);
+            
+            // Create zoom behavior
+            zoom = d3.zoom()
+                .scaleExtent([0.1, 10])
+                .extent([[0, 0], [scatterWidth, scatterHeight]])
+                .on("zoom", zoomed);
+            
+            // Apply zoom to the entire scatter plot group
+            g.call(zoom);
+            
+            // X histogram (above scatter plot)
+            const xHistGroup = g.append('g')
+                .attr('class', 'x-histogram')
+                .attr('transform', `translate(0, ${-histogramSize - 10})`);
+            
+            if (colorFeature) {
+                // Stacked histogram for x
+                xHistogramData.forEach((bin, i) => {
+                    let yOffset = 0;
+                    // Sort color entries by count (largest first) for proper z-order
+                    const sortedColorEntries = Object.entries(bin.colorCounts || {})
+                        .sort((a, b) => b[1] - a[1]);
+                    
+                    sortedColorEntries.forEach(([color, count]) => {
+                        const barHeight = xHistScale(count);
+                        xHistGroup.append('rect')
+                            .attr('x', xScale(bin.x0))
+                            .attr('y', histogramSize - yOffset - barHeight)
+                            .attr('width', Math.max(1, xScale(bin.x1) - xScale(bin.x0) - 1))
+                            .attr('height', barHeight)
+                            .attr('fill', colorScale(color))
+                            .attr('data-original-color', colorScale(color))
+                            .attr('opacity', 0.7);
+                        yOffset += barHeight;
+                    });
+                });
+            } else {
+                // Simple histogram for x
+                xHistGroup.selectAll('.x-hist-bar')
+                    .data(xHistogramData)
+                    .enter().append('rect')
+                    .attr('class', 'x-hist-bar')
+                    .attr('x', d => xScale(d.x0))
+                    .attr('y', d => histogramSize - xHistScale(d.length))
+                    .attr('width', d => Math.max(1, xScale(d.x1) - xScale(d.x0) - 1))
+                    .attr('height', d => xHistScale(d.length))
+                    .attr('fill', '#1f77b4')
+                    .attr('opacity', 0.7);
+            }
+            
+            // Y histogram (right of scatter plot)
+            const yHistGroup = g.append('g')
+                .attr('class', 'y-histogram')
+                .attr('transform', `translate(${scatterWidth + 10}, 0)`);
+            
+            if (colorFeature) {
+                // Stacked histogram for y
+                yHistogramData.forEach((bin, i) => {
+                    let xOffset = 0;
+                    // Sort color entries by count (largest first) for proper z-order
+                    const sortedColorEntries = Object.entries(bin.colorCounts || {})
+                        .sort((a, b) => b[1] - a[1]);
+                    
+                    sortedColorEntries.forEach(([color, count]) => {
+                        const barWidth = yHistScale(count);
+                        yHistGroup.append('rect')
+                            .attr('x', xOffset)
+                            .attr('y', yScale(bin.x1))
+                            .attr('width', barWidth)
+                            .attr('height', Math.max(1, yScale(bin.x0) - yScale(bin.x1) - 1))
+                            .attr('fill', colorScale(color))
+                            .attr('data-original-color', colorScale(color))
+                            .attr('opacity', 0.7);
+                        xOffset += barWidth;
+                    });
+                });
+            } else {
+                // Simple histogram for y
+                yHistGroup.selectAll('.y-hist-bar')
+                    .data(yHistogramData)
+                    .enter().append('rect')
+                    .attr('class', 'y-hist-bar')
+                    .attr('x', 0)
+                    .attr('y', d => yScale(d.x1))
+                    .attr('width', d => yHistScale(d.length))
+                    .attr('height', d => Math.max(1, yScale(d.x0) - yScale(d.x1) - 1))
+                    .attr('fill', '#1f77b4')
+                    .attr('opacity', 0.7);
+            }
+            
+            // Create axes groups
+            const xAxisGroup = g.append('g')
+                .attr('class', 'axis x-axis')
+                .attr('transform', `translate(0,${scatterHeight})`);
+            
+            const yAxisGroup = g.append('g')
+                .attr('class', 'axis y-axis');
+            
+            // Create plot area with clipping
+            const plotArea = g.append('g')
+                .attr('clip-path', 'url(#clip)');
+            
+            // Initial axes
+            xAxisGroup.call(d3.axisBottom(xScale));
+            yAxisGroup.call(d3.axisLeft(yScale));
+            
+            // Axis labels
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('transform', `translate(${scatterWidth/2}, ${scatterHeight + 40})`)
+                .style('text-anchor', 'middle')
+                .text(xFeature);
+            
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', 0 - margin.left + 20)
+                .attr('x', 0 - (scatterHeight / 2))
+                .attr('dy', '1em')
+                .style('text-anchor', 'middle')
+                .text(yFeature);
+            
+            // Data points
+            plotArea.selectAll('.dot')
+                .data(data)
+                .enter().append('circle')
+                .attr('class', 'dot')
+                .attr('cx', d => xScale(d.x))
+                .attr('cy', d => yScale(d.y))
+                .attr('r', currentPointSize)
+                .attr('fill', d => colorScale ? colorScale(d.color) : '#1f77b4')
+                .on('click', function(event, d) {
+                    loadImage(d.imageNumber, d.objectNumber);
+                    // Highlight selected point
+                    plotArea.selectAll('.dot').attr('stroke-width', 0.5).attr('r', currentPointSize);
+                    d3.select(this).attr('stroke-width', 3).attr('r', currentPointSize * 1.5);
+                });
+            
+            // Zoom function
+            function zoomed(event) {
+                const {transform} = event;
+                
+                // Create new scales based on zoom
+                const newXScale = transform.rescaleX(xScale);
+                const newYScale = transform.rescaleY(yScale);
+                
+                // Update axes
+                xAxisGroup.call(d3.axisBottom(newXScale));
+                yAxisGroup.call(d3.axisLeft(newYScale));
+                
+                // Update points
+                plotArea.selectAll('.dot')
+                    .attr('cx', d => newXScale(d.x))
+                    .attr('cy', d => newYScale(d.y));
+                
+                // Update histograms to show only visible data
+                updateHistograms(newXScale, newYScale, data, colorFeature);
+            }
+            
+            // Function to update histograms based on current zoom level
+            function updateHistograms(currentXScale, currentYScale, allData, colorFeature) {
+                // Get the current visible domain
+                const xDomain = currentXScale.domain();
+                const yDomain = currentYScale.domain();
+                
+                // Filter data to only include points in the visible range
+                const visibleData = allData.filter(d => 
+                    d.x >= xDomain[0] && d.x <= xDomain[1] && 
+                    d.y >= yDomain[0] && d.y <= yDomain[1]
+                );
+                
+                // If no visible data, clear histograms
+                if (visibleData.length === 0) {
+                    xHistGroup.selectAll('*').remove();
+                    yHistGroup.selectAll('*').remove();
+                    return;
+                }
+                
+                // Create new histogram data for visible range
+                const visibleXHistogramData = d3.histogram()
+                    .domain(xDomain)
+                    .thresholds(bins)
+                    .value(d => d.x)(visibleData);
+                
+                const visibleYHistogramData = d3.histogram()
+                    .domain(yDomain)
+                    .thresholds(bins)
+                    .value(d => d.y)(visibleData);
+                
+                // Process histogram data to include color information
+                if (colorFeature) {
+                    visibleXHistogramData.forEach(bin => {
+                        const colorCounts = {};
+                        bin.forEach(d => {
+                            const color = d.color;
+                            colorCounts[color] = (colorCounts[color] || 0) + 1;
+                        });
+                        bin.colorCounts = colorCounts;
+                    });
+                    
+                    visibleYHistogramData.forEach(bin => {
+                        const colorCounts = {};
+                        bin.forEach(d => {
+                            const color = d.color;
+                            colorCounts[color] = (colorCounts[color] || 0) + 1;
+                        });
+                        bin.colorCounts = colorCounts;
+                    });
+                }
+                
+                // Update scales for histograms based on visible data
+                const visibleXHistScale = d3.scaleLinear()
+                    .domain([0, d3.max(visibleXHistogramData, d => d.length) || 1])
+                    .range([0, histogramSize]);
+                
+                const visibleYHistScale = d3.scaleLinear()
+                    .domain([0, d3.max(visibleYHistogramData, d => d.length) || 1])
+                    .range([0, histogramSize]);
+                
+                // Clear and redraw X histogram
+                xHistGroup.selectAll('*').remove();
+                
+                if (colorFeature) {
+                    // Stacked histogram for x
+                    visibleXHistogramData.forEach((bin, i) => {
+                        let yOffset = 0;
+                        // Sort color entries by count (largest first) for proper z-order
+                        const sortedColorEntries = Object.entries(bin.colorCounts || {})
+                            .sort((a, b) => b[1] - a[1]);
+                        
+                        sortedColorEntries.forEach(([color, count]) => {
+                            const barHeight = visibleXHistScale(count);
+                            xHistGroup.append('rect')
+                                .attr('x', currentXScale(bin.x0))
+                                .attr('y', histogramSize - yOffset - barHeight)
+                                .attr('width', Math.max(1, currentXScale(bin.x1) - currentXScale(bin.x0) - 1))
+                                .attr('height', barHeight)
+                                .attr('fill', colorScale(color))
+                                .attr('data-original-color', colorScale(color))
+                                .attr('opacity', 0.7);
+                            yOffset += barHeight;
+                        });
+                    });
+                } else {
+                    // Simple histogram for x
+                    xHistGroup.selectAll('.x-hist-bar')
+                        .data(visibleXHistogramData)
+                        .enter().append('rect')
+                        .attr('class', 'x-hist-bar')
+                        .attr('x', d => currentXScale(d.x0))
+                        .attr('y', d => histogramSize - visibleXHistScale(d.length))
+                        .attr('width', d => Math.max(1, currentXScale(d.x1) - currentXScale(d.x0) - 1))
+                        .attr('height', d => visibleXHistScale(d.length))
+                        .attr('fill', '#1f77b4')
+                        .attr('opacity', 0.7);
+                }
+                
+                // Clear and redraw Y histogram
+                yHistGroup.selectAll('*').remove();
+                
+                if (colorFeature) {
+                    // Stacked histogram for y
+                    visibleYHistogramData.forEach((bin, i) => {
+                        let xOffset = 0;
+                        // Sort color entries by count (largest first) for proper z-order
+                        const sortedColorEntries = Object.entries(bin.colorCounts || {})
+                            .sort((a, b) => b[1] - a[1]);
+                        
+                        sortedColorEntries.forEach(([color, count]) => {
+                            const barWidth = visibleYHistScale(count);
+                            yHistGroup.append('rect')
+                                .attr('x', xOffset)
+                                .attr('y', currentYScale(bin.x1))
+                                .attr('width', barWidth)
+                                .attr('height', Math.max(1, currentYScale(bin.x0) - currentYScale(bin.x1) - 1))
+                                .attr('fill', colorScale(color))
+                                .attr('data-original-color', colorScale(color))
+                                .attr('opacity', 0.7);
+                            xOffset += barWidth;
+                        });
+                    });
+                } else {
+                    // Simple histogram for y
+                    yHistGroup.selectAll('.y-hist-bar')
+                        .data(visibleYHistogramData)
+                        .enter().append('rect')
+                        .attr('class', 'y-hist-bar')
+                        .attr('x', 0)
+                        .attr('y', d => currentYScale(d.x1))
+                        .attr('width', d => visibleYHistScale(d.length))
+                        .attr('height', d => Math.max(1, currentYScale(d.x0) - currentYScale(d.x1) - 1))
+                        .attr('fill', '#1f77b4')
+                        .attr('opacity', 0.7);
+                }
+                
+                // Apply current filtering to newly created histograms
+                updateHistogramColors();
+            }
+            
+            // Color legend
+            if (colorFeature && colorScale) {
+                const legend = svg.append('g')
+                    .attr('class', 'color-legend')
+                    .attr('transform', `translate(${margin.left}, ${scatterHeight + margin.top + 80})`);
+                
+                // Legend title
+                legend.append('text')
+                    .attr('x', 0)
+                    .attr('y', -10)
+                    .style('font-size', '12px')
+                    .style('font-weight', 'bold')
+                    .text(colorFeature);
+                
+                // Calculate available width for legend
+                const availableWidth = scatterWidth;
+                const itemWidth = 100; // Width per legend item
+                const itemsPerRow = Math.floor(availableWidth / itemWidth);
+                const rowHeight = 20; // Height between rows
+                
+                const legendItems = legend.selectAll('.legend-item')
+                    .data(colorScale.domain())
+                    .enter().append('g')
+                    .attr('class', 'legend-item')
+                    .attr('transform', (d, i) => {
+                        const row = Math.floor(i / itemsPerRow);
+                        const col = i % itemsPerRow;
+                        return `translate(${col * itemWidth}, ${row * rowHeight})`;
+                    })
+                    .style('cursor', 'pointer')
+                    .on('click', function(event, d) {
+                        // Toggle selection
+                        if (selectedCategory === d) {
+                            selectedCategory = null; // Deselect
+                        } else {
+                            selectedCategory = d; // Select this category
+                        }
+                        
+                        // Update visual appearance
+                        updateLegendAppearance();
+                        updatePointColors();
+                    });
+                
+                legendItems.append('circle')
+                    .attr('r', 6)
+                    .attr('fill', d => colorScale(d))
+                    .attr('stroke', '#333')
+                    .attr('stroke-width', 0);
+                
+                legendItems.append('text')
+                    .attr('x', 15)
+                    .attr('y', 0)
+                    .attr('dy', '0.35em')
+                    .style('font-size', '12px')
+                    .text(d => d);
+                
+                // Function to update legend appearance based on selection
+                function updateLegendAppearance() {
+                    legend.selectAll('.legend-item')
+                        .select('circle')
+                        .attr('stroke-width', d => selectedCategory === d ? 2 : 0)
+                        .attr('opacity', d => !selectedCategory || selectedCategory === d ? 1.0 : 0.5);
+                    
+                    legend.selectAll('.legend-item')
+                        .select('text')
+                        .style('font-weight', d => selectedCategory === d ? 'bold' : 'normal')
+                        .attr('opacity', d => !selectedCategory || selectedCategory === d ? 1.0 : 0.5);
+                }
+            }
+        }
+        
+        function loadImage(imageNumber, objectNumber) {
+            showImageStatus('Loading image...');
+            
+            fetch(`/api/image?image_number=${imageNumber}&object_number=${objectNumber}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    showImage(data.image, imageNumber, objectNumber);
+                })
+                .catch(error => {
+                    showImageStatus('Failed to load image: ' + error.message);
+                });
+        }
+        
+        function showImage(imageBase64, imageNumber, objectNumber) {
+            const container = document.getElementById('imageContainer');
+            const img = document.getElementById('selectedImage');
+            const info = document.getElementById('imageInfo');
+            
+            container.style.display = 'none';
+            img.src = `data:image/png;base64,${imageBase64}`;
+            img.style.display = 'block';
+            
+            info.innerHTML = `
+                <strong>Image Number:</strong> ${imageNumber}<br>
+                <strong>Object Number:</strong> ${objectNumber}
+            `;
+            info.style.display = 'block';
+        }
+        
+        function showImageStatus(message) {
+            const container = document.getElementById('imageContainer');
+            const img = document.getElementById('selectedImage');
+            const info = document.getElementById('imageInfo');
+            
+            container.innerHTML = `<p class="loading">${message}</p>`;
+            container.style.display = 'block';
+            img.style.display = 'none';
+            info.style.display = 'none';
+        }
+        
+        function showStatus(message) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.style.display = 'block';
+        }
+        
+        function hideStatus() {
+            document.getElementById('status').style.display = 'none';
+        }
+        
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
