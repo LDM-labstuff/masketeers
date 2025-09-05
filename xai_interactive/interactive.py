@@ -13,6 +13,7 @@ import numpy as np
 import base64
 import io
 import matplotlib
+import argparse
 
 matplotlib.use("Agg")  # Use non-interactive backend
 import matplotlib.pyplot as plt
@@ -91,10 +92,6 @@ class Data:
         return scatter_data
 
 
-# Initialize data object
-data_handler = Data("joined_data_top10features.csv", "images/")
-
-
 @app.route("/")
 def index():
     """Main page with the interactive visualization."""
@@ -148,4 +145,44 @@ def get_image():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5001)
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Interactive visualization web app")
+    parser.add_argument(
+        "--csv-path",
+        type=str,
+        default="joined_data_top10features.csv",
+        help="Path to the CSV file containing the features data (default: joined_data_top10features.csv)",
+    )
+    parser.add_argument(
+        "--images-folder",
+        type=str,
+        default="images/",
+        help="Path to the folder containing images (default: images/)",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Host address to bind the server to (default: 0.0.0.0)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=5001,
+        help="Port number to run the server on (default: 5001)",
+    )
+    parser.add_argument("--debug", action="store_true", help="Run Flask in debug mode")
+
+    args = parser.parse_args()
+
+    # Initialize data object with command line arguments
+    data_handler = Data(args.csv_path, args.images_folder)
+
+    print(f"Starting server with:")
+    print(f"  CSV file: {args.csv_path}")
+    print(f"  Images folder: {args.images_folder}")
+    print(f"  Host: {args.host}")
+    print(f"  Port: {args.port}")
+    print(f"  Debug mode: {args.debug}")
+
+    app.run(debug=args.debug, host=args.host, port=args.port)
