@@ -25,4 +25,7 @@ dependencies = [
     "imageio",
     "ome-zarr",
     "napari[all]",
+    "dlmbl_unet@git+https://github.com/dlmbl/dlmbl-unet",
+    "tensorboard",
+    "monai"
 ]
