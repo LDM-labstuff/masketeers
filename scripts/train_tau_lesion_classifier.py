@@ -207,7 +207,7 @@ for epoch in range(10000):
            
             optimizer = optimizer,
             loss_function = loss, epoch = epoch, device=device, tb_logger=logger)
-    if epoch % 100 ==0:
+    if epoch % 500 ==0:
         torch.save(
             {
             "unet": lesion_classifier.state_dict(),
