@@ -13,7 +13,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils import check_random_state
 from sklearn.datasets import make_hastie_10_2
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import pickle
 
 def create_pandas_df_from_csv(path_to_csv):
@@ -112,6 +112,13 @@ def main(
     print(report_val)
     print(f"Confusion matrix for validation:")
     print(confusion_matrix(y_val, y_pred))
+
+    
+    TREATMENTS = ['8nMActD', 'DMSO', '1uMdoxo', 'CX5461', '5uMflavo', '800nMActD', '10uMmg132', '10uMwort']
+    cm = confusion_matrix(y_val, y_pred)
+    disp = ConfusionMatrixDisplay(cm, display_labels=TREATMENTS)
+    disp.plot(xticks_rotation = 45)
+    disp.figure_.savefig(f'/mnt/efs/aimbl_2025/student_data/S-DD/nucleoli_classifier_validation_cm-{tstamp}.png')
 
 if __name__ == "__main__":
     typer.run(main)
