@@ -14,6 +14,7 @@ import base64
 import io
 import matplotlib
 import argparse
+from masketeers.nuclei_cropping_from_file_list import crop_object, obtain_image_paths
 
 matplotlib.use("Agg")  # Use non-interactive backend
 import matplotlib.pyplot as plt
@@ -31,9 +32,11 @@ class Data:
     """
 
     def __init__(self, csv_path: str, folder: str):
-        self.data = pd.read_csv(csv_path, index_col=0)
+        self.data = pd.read_csv(csv_path)
+    
         # Set "ImageNumber" and "ObjectNumber" as index for easier access to images
-        self.data.set_index(["ImageNumber", "ObjectNumber"], inplace=True)
+        print(f"Columns in file: {self.data.columns}")
+        #self.data.set_index(["ImageNumber", "ObjectNumber"], inplace=True)
         self.folder = folder
         self.feature_names = list(
             set(self.data.columns.tolist())
@@ -48,8 +51,13 @@ class Data:
         Returns a base64 encoded image for the given image number and object number.
         Currently returns a random numpy array as placeholder.
         """
-        # Create a random image as placeholder
-        random_image = np.random.rand(100, 100, 3)
+        file_prj, file_mask = obtain_image_paths(self.data, image_number, self.folder, self.files)
+
+        # Obtain cropped image
+        cropped_image, mask = crop_object(file_prj, file_mask, object_number, self.data, image_number)
+
+        # Save image as random_image
+        random_image = cropped_image
 
         # Create matplotlib figure
         fig, ax = plt.subplots(figsize=(4, 4))
@@ -103,7 +111,7 @@ def get_features():
     """API endpoint to get available features for dropdown menus."""
     return jsonify(
         {
-            "features": data_handler.feature_names,
+            "features": sorted(data_handler.feature_names),
             "categorical_features": ["Metadata_Treatment", "Treatment_Binary"],
         }
     )

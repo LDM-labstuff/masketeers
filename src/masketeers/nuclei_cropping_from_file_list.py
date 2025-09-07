@@ -36,9 +36,10 @@ def obtain_image_paths(cp_file_df, image_num, path_to_images):
 
 
 
-def crop_object(file_prj, file_mask, object_num):
+def crop_object(file_prj, file_mask, object_num, cp_file_df, image_num):
     # convert images to numpy arrays
     prj = skimage.io.imread(file_prj)
+    prj = prj[ :, :, [2,1,0]]
     mask = skimage.io.imread(file_mask)
     print(f"prj shape: {prj.shape}")
     print(f"mask_shape: {mask.shape}")

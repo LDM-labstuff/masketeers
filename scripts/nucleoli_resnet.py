@@ -25,6 +25,9 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import tqdm
+import torchview
+import graphviz
+from torchview import draw_graph
 
 #Load images from zarr to torch dataset
 
@@ -143,6 +146,10 @@ model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
 # Modify the final fully connected layer and establish model parameters
 model.fc = nn.Linear(model.fc.in_features, num_classes)
 model = model.to(device)
+
+#Print model info
+print(model)
+
 
 # Loss and optimizer
 criterion = nn.CrossEntropyLoss()
